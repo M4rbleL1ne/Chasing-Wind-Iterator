@@ -214,6 +214,14 @@ public static class CWOracleHooks
         IL.HUD.Map.CycleLabel.UpdateCycleText += IL_CycleLabel_UpdateCycleText;
         IL.HUD.TextPrompt.Update += IL_TextPrompt_Update;
         On.SSOracleBehavior.UpdateStoryPearlCollection += On_SSOracleBehavior_UpdateStoryPearlCollection;
+        On.Player.ThrowObject += On_Player_ThrowObject;
+    }
+
+    static void On_Player_ThrowObject(On.Player.orig_ThrowObject orig, Player self, int grasp, bool eu)
+    {
+        if (self.grasps[grasp]?.grabbed is SingularityBomb && self.room?.abstractRoom.name is string nm && string.Equals("CW_AI", nm, StringComparison.OrdinalIgnoreCase))
+            return;
+        orig(self, grasp, eu);
     }
 
     static Color On_OracleGraphics_SkinColor(On.OracleGraphics.orig_SkinColor orig, OracleGraphics self) => self.oracle.IsCW() ? new(237f / 255f, 230f / 255f, 1f) : orig(self);
