@@ -7,5 +7,5 @@
   "name": "CW Hook",
   "type": 1,
   "token": "7mpAxjozjA2w7Y8eHNv9ww4i28a3-dgSfVxIcNPQjV8l9sF7bORzH4UMyGQQ0X1QtQHz",
-  "url": "https://discord.com/api/webhooks/1365645563097255966/7mpAxjozjA2w7Y8eHNv9ww4i28a3-dgSfVxIcNPQjV8l9sF7bORzH4UMyGQQ0X1QtQHz"
+  "url": "https://discord.com/api/webhooks/1365645563097255966/7mpAxjozjA2w7Y8eHNv9ww4i28a3-dgSfVxIcNPQjV8l9sF7bORzH4UMyGQQ0X1QtQHz/github"
 }
