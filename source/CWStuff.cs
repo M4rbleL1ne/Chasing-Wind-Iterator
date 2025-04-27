@@ -233,8 +233,25 @@ public sealed class CWStuffPlugin : BaseUnityPlugin
                     spr.alpha = self.lightBloomAlpha = rm.roomSettings.GetEffectAmount(ef);
             }
         };
+        On.FliesRoomAI.CreateFlyInHive += On_FliesRoomAI_CreateFlyInHive;
         CWOracleHooks.Apply();
         CWWater.Apply();
+    }
+
+    static void On_FliesRoomAI_CreateFlyInHive(On.FliesRoomAI.orig_CreateFlyInHive orig, FliesRoomAI self)
+    {
+        if (self.room is Room rm && rm.abstractRoom.name is string nm && string.Equals("CW_C13", nm, StringComparison.OrdinalIgnoreCase))
+        {
+            var cnt = 0;
+            var crits = rm.abstractRoom.creatures;
+            for (var j = 0; j < crits.Count; j++)
+            {
+                if (crits[j]?.creatureTemplate.type == CreatureTemplate.Type.Fly)
+                    ++cnt;
+            }
+            if (cnt >= 10)
+                return;
+        }
     }
 
     public void OnDisable()
