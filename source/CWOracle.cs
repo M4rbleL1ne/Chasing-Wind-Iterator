@@ -984,8 +984,7 @@ public static class CWOracleHooks
         {
             if (string.Equals(eventName, "SHOWBRAINPIC", StringComparison.OrdinalIgnoreCase) || string.Equals(eventName, "unlock", StringComparison.OrdinalIgnoreCase))
             {
-                if (self.conversation is not null)
-                    self.conversation.paused = true;
+                self.conversation?.paused = true;
                 self.inActionCounter = 0;
                 self.NewAction(SSOracleBehavior.Action.MeetWhite_Images);
                 self.oracle.room.PlaySound(Random.value < .5f ? NewSoundID.CW_AI_Talk_1 : NewSoundID.CW_AI_Talk_2, self.oracle.firstChunk).requireActiveUpkeep = false;
@@ -1091,8 +1090,7 @@ public static class CWOracleHooks
                 OnCustomEvent?.Invoke(self, eventName, ref run);
                 if (run && self.currSubBehavior is CWGeneralConversation cv)
                 {
-                    if (self.conversation is not null)
-                        self.conversation.paused = true;
+                    self.conversation?.paused = true;
                     self.inActionCounter = 0;
                     cv.Gifts = GiftStates.None;
                     var events = eventName.Split('+');
@@ -1474,10 +1472,8 @@ public static class CWOracleHooks
             self.oracle.room.PlaySound(Random.value < .5f ? NewSoundID.CW_AI_Angry_1 : NewSoundID.CW_AI_Angry_2, self.oracle.firstChunk).requireActiveUpkeep = false;
             if (self.conversation is not null || self.pearlConversation is not null)
             {
-                if (self.conversation is not null)
-                    self.conversation.paused = true;
-                if (self.pearlConversation is not null)
-                    self.pearlConversation.paused = true;
+                self.conversation?.paused = true;
+                self.pearlConversation?.paused = true;
                 self.restartConversationAfterCurrentDialoge = true;
                 if (self.oracle.room.game.GetStorySession.saveState.deathPersistentSaveData.theMark && CWConversation.CWLinesFromFile("ReactToHitWeaponWhileTalking", self.oracle.room.game.StoryCharacter?.value) is string[] lns && lns.Length > 0)
                     self.dialogBox.Interrupt(lns[Random.Range(0, lns.Length)], 10);
@@ -2153,7 +2149,7 @@ public static class CWOracleHooks
         if (self.AbstractPearl.dataPearlType == DataPearlType.CWPearl)
         {
             var num = Random.Range(0, 3);
-            if (rCam.room.world.game.IsStorySession)
+            if (rCam.game?.session is StoryGameSession)
                 num = (self.abstractPhysicalObject as PebblesPearl.AbstractPebblesPearl)!.color;
             self.color = Mathf.Abs(num) switch
             {
