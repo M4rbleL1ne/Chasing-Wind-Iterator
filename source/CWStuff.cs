@@ -252,6 +252,7 @@ public sealed class CWStuffPlugin : BaseUnityPlugin
             if (cnt >= 10)
                 return;
         }
+        orig(self);
     }
 
     public void OnDisable()
