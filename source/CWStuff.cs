@@ -153,6 +153,8 @@ public sealed class CWStuffPlugin : BaseUnityPlugin
             _ = DataPearlType.CWPearl;
             _ = ConversationID.SL_CWNeuron;
             _ = NewOracleID.CW;
+            _ = SubBehavID.GetOYBot;
+            _ = ActionID.GetOYBot_Init;
             _ = CWDarkerTubes;
             try
             {
@@ -207,6 +209,8 @@ public sealed class CWStuffPlugin : BaseUnityPlugin
                     ConversationID.UnregisterValues();
                     NewTickerID.UnregisterValues();
                     NewSoundID.UnregisterValues();
+                    SubBehavID.UnregisterValues();
+                    ActionID.UnregisterValues();
                     break;
                 }
             }

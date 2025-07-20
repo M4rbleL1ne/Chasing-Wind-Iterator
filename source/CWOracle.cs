@@ -54,6 +54,40 @@ public static class DataPearlType
     }
 }
 
+public static class SubBehavID
+{
+    public static SSOracleBehavior.SubBehavior.SubBehavID GetOYBot = new(nameof(GetOYBot), true);
+
+    internal static void UnregisterValues()
+    {
+        if (GetOYBot is not null)
+        {
+            GetOYBot.Unregister();
+            GetOYBot = null!;
+        }
+    }
+}
+
+public static class ActionID
+{
+    public static SSOracleBehavior.Action GetOYBot_Init = new(nameof(GetOYBot_Init), true),
+        GetOYBot_Inspect = new(nameof(GetOYBot_Inspect), true);
+
+    internal static void UnregisterValues()
+    {
+        if (GetOYBot_Init is not null)
+        {
+            GetOYBot_Init.Unregister();
+            GetOYBot_Init = null!;
+        }
+        if (GetOYBot_Inspect is not null)
+        {
+            GetOYBot_Inspect.Unregister();
+            GetOYBot_Inspect = null!;
+        }
+    }
+}
+
 public static class NewOracleID
 {
     public static Oracle.OracleID CW = new(nameof(CW), true);
@@ -107,7 +141,7 @@ public static class CWOracleHooks
     {
         public SLOrcacleState OracleState = oracleState;
         public int NumberOfConversations, AnnoyedCounter;
-        public bool SeenGreenNeuron, ScavImmunity, SeenSpearmasterTaggedPearl, AdditionalRedCycles;
+        public bool SeenGreenNeuron, ScavImmunity, SeenSpearmasterTaggedPearl, AdditionalRedCycles, SeenOYBot;
     }
 
     public delegate void CWSpecialEvent(SSOracleBehavior self, string eventName, ref bool runGiftCode);
@@ -122,6 +156,7 @@ public static class CWOracleHooks
 
     public static ConditionalWeakTable<MiscWorldSaveData, CWOracleWorldSaveData> WorldSaveData = new();
     public static ConditionalWeakTable<SlugcatSelectMenu.SaveGameData, StrongBox<bool>> GameData = new();
+    public static ConditionalWeakTable<SSOracleBehavior, PhysicalObject> OYBot = new();
     public static MethodInfo CWWorldRedCyclesInfo = typeof(CWOracleHooks).GetMethod(nameof(CWWorldRedCycles)),
         CWGameRedCyclesInfo = typeof(CWOracleHooks).GetMethod(nameof(CWGameRedCycles));
     //public static ConditionalWeakTable<PlayerProgression.MiscProgressionData, HashSet<DataPearl.AbstractDataPearl.DataPearlType>> DecipheredPearls = new();
@@ -129,7 +164,7 @@ public static class CWOracleHooks
     public static event CWPearlEvent? OnPearlIntro;
     public static event CWSpecialEvent? OnCustomEvent;
     public static event CWGiftEvent? OnCustomGift;
-    public static event CWEvent? OnTakeNeuron, OnReleaseNeuron, OnResumePausedPearlConversation, OnInterruptPearlMessagePlayerLeaving, OnUnconciousUpdate, OnReactToHitWeapon,
+    public static event CWEvent? OnTakeNeuron, OnReleaseNeuron, OnTakeBot, OnReleaseBot, OnResumePausedPearlConversation, OnInterruptPearlMessagePlayerLeaving, OnUnconciousUpdate, OnReactToHitWeapon,
         OnSlugcatEnterRoomReaction, OnNewAction, OnSeePlayer;
     public static event Action<SSOracleBehavior>? OnMove, OnUpdate;
 
@@ -991,7 +1026,6 @@ public static class CWOracleHooks
             }
             else if (string.Equals(eventName, "TAKENEURON", StringComparison.OrdinalIgnoreCase))
             {
-                self.inActionCounter = 0;
                 if (self.greenNeuron is NSHSwarmer swn && !swn.slatedForDeletetion && swn.room == self.oracle.room)
                     TakeNeuron(self, swn);
                 else if (self.player?.objectInStomach?.type == AbstractPhysicalObject.AbstractObjectType.NSHSwarmer)
@@ -1018,6 +1052,35 @@ public static class CWOracleHooks
                     }
                 }
             }
+            else if (string.Equals(eventName, "TAKEBOT", StringComparison.OrdinalIgnoreCase))
+            {
+                if (OYBot.TryGetValue(self, out var bot) && bot is not null && !bot.slatedForDeletetion && bot.room == self.oracle.room)
+                    TakeBot(self, bot);
+                else if (self.player?.objectInStomach?.type?.value == "OYOrbitalRobot")
+                {
+                    self.movementBehavior = SSOracleBehavior.MovementBehavior.KeepDistance;
+                    self.player.Regurgitate();
+                    var objLists = self.oracle.room.physicalObjects;
+                    for (var i = 0; i < objLists.Length; i++)
+                    {
+                        var objs = objLists[i];
+                        for (var j = 0; j < objs.Count; j++)
+                        {
+                            if (objs[j] is PhysicalObject obj && obj.abstractPhysicalObject.type?.value == "OYOrbitalRobot" && obj.firstChunk.mass < 50f)
+                            {
+                                OYBot.Remove(self);
+                                OYBot.Add(self, obj);
+                                break;
+                            }
+                        }
+                    }
+                    if (OYBot.TryGetValue(self, out var bot2) && bot2 is not null)
+                    {
+                        bot2.firstChunk.vel *= 0f;
+                        TakeBot(self, bot2);
+                    }
+                }
+            }
             else if (string.Equals(eventName, "RELEASENEURON", StringComparison.OrdinalIgnoreCase))
             {
                 var run = true;
@@ -1033,6 +1096,22 @@ public static class CWOracleHooks
                     sw.lastDirection *= 0f;
                     sw.firstChunk.mass = .2f;
                     self.greenNeuron = null;
+                }
+                self.inActionCounter = 0;
+                self.action = SSOracleBehavior.Action.MeetWhite_Curious;
+            }
+            else if (string.Equals(eventName, "RELEASEBOT", StringComparison.OrdinalIgnoreCase))
+            {
+                var run = true;
+                OnReleaseBot?.Invoke(self, ref run);
+                if (!run)
+                    return;
+                if (OYBot.TryGetValue(self, out var bot) && bot is not null && self.player is not null)
+                {
+                    bot.firstChunk.HardSetPosition(bot.firstChunk.pos);
+                    bot.firstChunk.vel *= 0f;
+                    bot.firstChunk.mass = .07f;
+                    OYBot.Remove(self);
                 }
                 self.inActionCounter = 0;
                 self.action = SSOracleBehavior.Action.MeetWhite_Curious;
@@ -1122,21 +1201,51 @@ public static class CWOracleHooks
         OnTakeNeuron?.Invoke(self, ref run);
         if (run && self.currSubBehavior is CWGeneralConversation cv)
         {
-            cv.CurrentLookPoint = gn.firstChunk.pos;
+            var fc = gn.firstChunk;
+            cv.CurrentLookPoint = fc.pos;
             self.movementBehavior = SSOracleBehavior.MovementBehavior.KeepDistance;
-            if (gn.grabbedBy.Count > 0)
+            var grbs = gn.grabbedBy;
+            if (grbs.Count > 0)
             {
-                for (var num = gn.grabbedBy.Count - 1; num >= 0; num--)
-                    gn.grabbedBy[num]?.Release();
-                gn.firstChunk.vel.y = 7f;
+                for (var num = grbs.Count - 1; num >= 0; num--)
+                    grbs[num]?.Release();
+                fc.vel.y = 7f;
                 var room = self.oracle.room;
                 for (var j = 0; j < 7; j++)
-                    room.AddObject(new Spark(gn.firstChunk.pos, Custom.RNV() * Mathf.Lerp(4f, 16f, Random.value), gn.myColor, null, 9, 40));
+                    room.AddObject(new Spark(fc.pos, Custom.RNV() * Mathf.Lerp(4f, 16f, Random.value), gn.myColor, null, 9, 40));
             }
             gn.storyFly = true;
             gn.storyFlyTarget = cv.GrabPos;
-            gn.firstChunk.mass = .000001f;
+            fc.mass = .000001f;
             cv.ActiveNeuronMovement = true;
+            if (ModManager.CoopAvailable)
+                self.StunCoopPlayers(30);
+            else
+                self.player?.Stun(30);
+        }
+    }
+
+    static void TakeBot(SSOracleBehavior self, PhysicalObject bot)
+    {
+        var run = true;
+        OnTakeBot?.Invoke(self, ref run);
+        if (run && self.currSubBehavior is CWGeneralConversation cv)
+        {
+            var fc = bot.firstChunk;
+            cv.CurrentLookPoint = fc.pos;
+            self.movementBehavior = SSOracleBehavior.MovementBehavior.KeepDistance;
+            var grbs = bot.grabbedBy;
+            if (grbs.Count > 0)
+            {
+                for (var num = grbs.Count - 1; num >= 0; num--)
+                    grbs[num]?.Release();
+                fc.vel.y = 7f;
+                var room = self.oracle.room;
+                for (var j = 0; j < 7; j++)
+                    room.AddObject(new Spark(fc.pos, Custom.RNV() * Mathf.Lerp(4f, 16f, Random.value), Color.green, null, 9, 40));
+            }
+            fc.mass = .000001f;
+            cv.ActiveBotMovement = true;
             if (ModManager.CoopAvailable)
                 self.StunCoopPlayers(30);
             else
@@ -1159,12 +1268,17 @@ public static class CWOracleHooks
             if (!ModManager.CoopAvailable || self.oracle.room is not Room rm || rm.game.rainWorld.safariMode)
                 return;
             var flag = false;
-            if (WorldSaveData.TryGetValue(rm.game.GetStorySession.saveState.miscWorldSaveData, out var data) && !data.SeenGreenNeuron)
+            if (WorldSaveData.TryGetValue(rm.game.GetStorySession.saveState.miscWorldSaveData, out var data))
             {
-                if (self.PlayerWithNeuronInStomach is Player pl)
+                if (!data.SeenGreenNeuron && self.PlayerWithNeuronInStomach is Player pl)
                 {
                     flag = true;
                     self.player = pl;
+                }
+                else if (!data.SeenOYBot && self.PlayerWithBotInStomach() is Player pl2)
+                {
+                    flag = true;
+                    self.player = pl2;
                 }
             }
             else
@@ -1291,6 +1405,18 @@ public static class CWOracleHooks
                     strs.Add(redCycles);
                 }
             }
+            if ((i = strs.IndexOf("M4R_CW_seenOYBot")) != -1)
+            {
+                if (i == strs.Count - 1)
+                    strs.Add(data.SeenOYBot.ToString());
+                else
+                    strs[i + 1] = data.SeenOYBot.ToString();
+            }
+            else
+            {
+                strs.Add("M4R_CW_seenOYBot");
+                strs.Add(data.SeenOYBot.ToString());
+            }
         }
         return orig(self);
     }
@@ -1320,6 +1446,8 @@ public static class CWOracleHooks
                     data.ScavImmunity = string.Equals(unrec[i + 1], "Y", StringComparison.OrdinalIgnoreCase);
                 else if (flag2 && string.Equals(str, "M4R_CW_redCycles", StringComparison.OrdinalIgnoreCase))
                     data.AdditionalRedCycles = string.Equals(unrec[i + 1], "Y", StringComparison.OrdinalIgnoreCase);
+                else if (string.Equals(str, "M4R_CW_seenOYBot", StringComparison.OrdinalIgnoreCase))
+                    bool.TryParse(unrec[i + 1], out data.SeenOYBot);
             }
         }
     }
@@ -1626,6 +1754,8 @@ public static class CWOracleHooks
                     subbhv = SSOracleBehavior.SubBehavior.SubBehavID.MeetWhite;
                 else if (nextAction.value.Contains("GetNeuron"))
                     subbhv = SSOracleBehavior.SubBehavior.SubBehavID.GetNeuron;
+                else if (nextAction.value.Contains("GetOYBot"))
+                    subbhv = SubBehavID.GetOYBot;
                 else if (nextAction.value.Contains("ThrowOut"))
                     subbhv = SSOracleBehavior.SubBehavior.SubBehavID.ThrowOut;
             }
@@ -1633,11 +1763,13 @@ public static class CWOracleHooks
             if (subbhv != SSOracleBehavior.SubBehavior.SubBehavID.General && subbhv != self.currSubBehavior?.ID)
             {
                 SSOracleBehavior.SubBehavior? subBehavior = null;
-                for (var i = 0; i < self.allSubBehaviors.Count; i++)
+                var subs = self.allSubBehaviors;
+                for (var i = 0; i < subs.Count; i++)
                 {
-                    if (self.allSubBehaviors[i].ID == subbhv)
+                    var subTemp = subs[i];
+                    if (subTemp.ID == subbhv)
                     {
-                        subBehavior = self.allSubBehaviors[i];
+                        subBehavior = subTemp;
                         break;
                     }
                 }
@@ -1650,6 +1782,16 @@ public static class CWOracleHooks
                             if (WorldSaveData.TryGetValue(self.oracle.room.game.GetStorySession.saveState.miscWorldSaveData, out var data))
                                 data.SeenGreenNeuron = true;
                             var s = self.oracle.room.game.StoryCharacter.value + "_FirstEncounter_WithNeuron";
+                            var id = new Conversation.ID("E") { value = s, valueHash = s.GetHashCode() };
+                            var bhv = new CWGeneralConversation(self, id);
+                            subBehavior = bhv;
+                            self.InitateConversation(id, bhv);
+                        }
+                        else if (((OYBot.TryGetValue(self, out var bot) && bot is not null) || self.player.objectInStomach?.type?.value == "OYOrbitalRobot") && !self.HasSeenOYBot())
+                        {
+                            if (WorldSaveData.TryGetValue(self.oracle.room.game.GetStorySession.saveState.miscWorldSaveData, out var data))
+                                data.SeenOYBot = true;
+                            var s = self.oracle.room.game.StoryCharacter.value + "_FirstEncounter_WithBot";
                             var id = new Conversation.ID("E") { value = s, valueHash = s.GetHashCode() };
                             var bhv = new CWGeneralConversation(self, id);
                             subBehavior = bhv;
@@ -1669,6 +1811,14 @@ public static class CWOracleHooks
                     else if (subbhv == SSOracleBehavior.SubBehavior.SubBehavID.GetNeuron)
                     {
                         var s = self.oracle.room.game.StoryCharacter.value + "_GetNeuron";
+                        var id = new Conversation.ID("E") { value = s, valueHash = s.GetHashCode() };
+                        var bhv = new CWGeneralConversation(self, id);
+                        subBehavior = bhv;
+                        self.InitateConversation(id, bhv);
+                    }
+                    else if (subbhv == SubBehavID.GetOYBot)
+                    {
+                        var s = self.oracle.room.game.StoryCharacter.value + "_GetBot";
                         var id = new Conversation.ID("E") { value = s, valueHash = s.GetHashCode() };
                         var bhv = new CWGeneralConversation(self, id);
                         subBehavior = bhv;
@@ -2008,8 +2158,8 @@ public static class CWOracleHooks
 
     static bool On_SSOracleBehavior_get_HasSeenGreenNeuron(Func<SSOracleBehavior, bool> orig, SSOracleBehavior self)
     {
-        if (self.oracle.IsCW())
-            return WorldSaveData.TryGetValue(self.oracle.room.game.GetStorySession.saveState.miscWorldSaveData, out var data) && data.SeenGreenNeuron;
+        if (self.oracle.IsCW() && self.oracle.room.game.session is StoryGameSession sess)
+            return WorldSaveData.TryGetValue(sess.saveState.miscWorldSaveData, out var data) && data.SeenGreenNeuron;
         return orig(self);
     }
 
@@ -2052,7 +2202,7 @@ public static class CWOracleHooks
                     {
                         JollyCoop.JollyCustom.Log("Failed to move player " + ex, true);
                     }
-                    if (player is null && item.objectInStomach?.type == AbstractPhysicalObject.AbstractObjectType.NSHSwarmer)
+                    if (player is null && item.objectInStomach is AbstractPhysicalObject obj && (obj.type == AbstractPhysicalObject.AbstractObjectType.NSHSwarmer || obj.type?.value == "OYOrbitalRobot"))
                     {
                         player = item;
                         //JollyCoop.JollyCustom.Log($"Found player with neuron in stomach, focusing ... {item}");
@@ -2062,6 +2212,7 @@ public static class CWOracleHooks
                     self.player = player;
             }
             self.greenNeuron = null;
+            OYBot.Remove(self);
             var objLists = rm.physicalObjects;
             for (i = 0; i < objLists.Length; i++)
             {
@@ -2069,10 +2220,9 @@ public static class CWOracleHooks
                 for (j = 0; j < objs.Count; j++)
                 {
                     if (objs[j] is NSHSwarmer sw)
-                    {
                         self.greenNeuron = sw;
-                        break;
-                    }
+                    else if (objs[j] is PhysicalObject obj && obj.abstractPhysicalObject.type?.value == "OYOrbitalRobot" && obj.firstChunk.mass < 50f)
+                        OYBot.Add(self, obj);
                 }
             }
             var run = true;
@@ -2097,6 +2247,15 @@ public static class CWOracleHooks
                 else if (self.currSubBehavior is CWNoSubBehavior ns)
                     ns.SeenPlayer = true;
                 self.NewAction(SSOracleBehavior.Action.GetNeuron_Init);
+            }
+            else if (((OYBot.TryGetValue(self, out var bot) && bot is not null) || self.player.objectInStomach?.type?.value == "OYOrbitalRobot") && !self.HasSeenOYBot() && dataFlag)
+            {
+                data.SeenOYBot = true;
+                if (self.currSubBehavior is CWGeneralConversation cv)
+                    cv.SeenPlayer = true;
+                else if (self.currSubBehavior is CWNoSubBehavior ns)
+                    ns.SeenPlayer = true;
+                self.NewAction(ActionID.GetOYBot_Init);
             }
             else
             {
@@ -2720,4 +2879,8 @@ public static class CWOracleHooks
     }*/
 
     public static bool IsCW(this Oracle self) => self.ID == NewOracleID.CW;
+
+    public static Player? PlayerWithBotInStomach(this OracleBehavior self) => self.PlayersInRoom?.Find(x => x.objectInStomach?.type?.value == "OYOrbitalRobot");
+
+    public static bool HasSeenOYBot(this OracleBehavior self) => self.oracle.room.game.session is StoryGameSession sess && WorldSaveData.TryGetValue(sess.saveState.miscWorldSaveData, out var data) && data.SeenOYBot;
 }

@@ -109,6 +109,8 @@ public class CWThrowOut(SSOracleBehavior owner) : SSOracleBehavior.ThrowOutBehav
         {
             if (owner.greenNeuron is NSHSwarmer sw && sw.room is null)
                 owner.greenNeuron = null;
+            if (CWOracleHooks.OYBot.TryGetValue(owner, out var bot) && bot is not null && bot.room is null)
+                CWOracleHooks.OYBot.Remove(owner);
         }
         if ((!p.dead || owner.killFac > .5f) && p.room == oroom)
         {

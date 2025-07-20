@@ -41,7 +41,7 @@ public class CWGeneralConversation(SSOracleBehavior owner, Conversation.ID convo
     public float PartialGravity;
     public Vector2? CurrentLookPoint;
     public GiftStates Gifts;
-    public bool GravOn, LockPaths, SeenPlayer, ChangePassiveBehavior, ActiveNeuronMovement;
+    public bool GravOn, LockPaths, SeenPlayer, ChangePassiveBehavior, ActiveNeuronMovement, ActiveBotMovement;
     public ProjectedImage? ShowImage;
     public Vector2 IdealShowMediaPos, ShowMediaPos;
     public int ConsistentShowMediaPosCounter, ImageCounter, ChangeCouter;
@@ -132,12 +132,33 @@ public class CWGeneralConversation(SSOracleBehavior owner, Conversation.ID convo
                     ownr.action = SSOracleBehavior.Action.GetNeuron_InspectNeuron;
                 }
             }
+            else if (ActiveBotMovement && CWOracleHooks.OYBot.TryGetValue(ownr, out var bot) && bot is not null && !bot.slatedForDeletetion && bot.room == ownr.oracle.room)
+            {
+                if (Custom.DistLess(GrabPos, bot.firstChunk.pos, 20f))
+                {
+                    ActiveBotMovement = false;
+                    ownr.action = ActionID.GetOYBot_Inspect;
+                }
+                else
+                    bot.firstChunk.vel = Custom.DirVec(bot.firstChunk.pos, GrabPos) * 8f;
+            }
             if (ownr.action == SSOracleBehavior.Action.GetNeuron_InspectNeuron)
             {
                 if (ownr.greenNeuron is NSHSwarmer sw)
                 {
                     sw.firstChunk.pos = GrabPos;
                     CurrentLookPoint = sw.firstChunk.pos;
+                }
+                else
+                    CurrentLookPoint = null;
+                ownr.movementBehavior = SSOracleBehavior.MovementBehavior.KeepDistance;
+            }
+            else if (ownr.action == ActionID.GetOYBot_Inspect)
+            {
+                if (CWOracleHooks.OYBot.TryGetValue(ownr, out var bot) && bot is not null)
+                {
+                    bot.firstChunk.pos = GrabPos;
+                    CurrentLookPoint = bot.firstChunk.pos;
                 }
                 else
                     CurrentLookPoint = null;

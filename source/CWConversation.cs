@@ -98,10 +98,22 @@ public class CWConversation(SSOracleBehavior owner, SSOracleBehavior.Conversatio
             if (!CWEventsFromFile(this, Convo))
                 CWEventsFromFile(this, "Red_GetNeuron");
         }
-        else if (Convo.Contains("_WithNeuron"))
+        else if (Convo.Contains("_GetBot"))
         {
             if (!CWEventsFromFile(this, Convo))
-                CWEventsFromFile(this, "Red_FirstEncounter_WithNeuron");
+                CWEventsFromFile(this, "White_GetBot");
+        }
+        else if (Convo.Contains("_WithNeuron"))
+        {
+            var mark = owner.playerEnteredWithMark ? "_AlreadyHadMark" : "_MarkGiven";
+            if (!CWEventsFromFile(this, Convo + mark))
+                CWEventsFromFile(this, "Red_FirstEncounter_WithNeuron" + mark);
+        }
+        else if (Convo.Contains("_WithBot"))
+        {
+            var mark = owner.playerEnteredWithMark ? "_AlreadyHadMark" : "_MarkGiven";
+            if (!CWEventsFromFile(this, Convo + mark))
+                CWEventsFromFile(this, "White_FirstEncounter_WithBot" + mark);
         }
         else if (owner.playerEnteredWithMark)
         {
