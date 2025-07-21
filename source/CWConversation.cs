@@ -9,66 +9,6 @@ using System;
 using Random = UnityEngine.Random;
 
 namespace CWStuff;
-//CHK
-public static class NewSoundID
-{
-    //vol=0.7
-    public static SoundID CW_AI_Talk_1 = new(nameof(CW_AI_Talk_1), true), CW_AI_Talk_2 = new(nameof(CW_AI_Talk_2), true), CW_AI_Angry_1 = new(nameof(CW_AI_Angry_1), true), CW_AI_Angry_2 = new(nameof(CW_AI_Angry_2), true);
-
-    internal static void UnregisterValues()
-    {
-        CW_AI_Talk_1?.Unregister();
-        CW_AI_Talk_1 = null!;
-        CW_AI_Talk_2?.Unregister();
-        CW_AI_Talk_2 = null!;
-        CW_AI_Angry_1?.Unregister();
-        CW_AI_Angry_1 = null!;
-        CW_AI_Angry_2?.Unregister();
-        CW_AI_Angry_2 = null!;
-    }
-}
-
-public static class ConversationID
-{
-    public static Conversation.ID SL_CWNeuron = new(nameof(SL_CWNeuron), true), CWSpearPearlAfterMoon = new(nameof(CWSpearPearlAfterMoon), true);
-        
-    internal static void UnregisterValues()
-    {
-        SL_CWNeuron?.Unregister();
-        SL_CWNeuron = null!;
-        CWSpearPearlAfterMoon?.Unregister();
-        CWSpearPearlAfterMoon = null!;
-    }
-}
-
-public class CWPearlConversation(Conversation.ID id, OracleBehavior slOracleBehaviorHasMark, SLOracleBehaviorHasMark.MiscItemType describeItem) : SLOracleBehaviorHasMark.MoonConversation(id, slOracleBehaviorHasMark, describeItem)
-{
-    public delegate void AddEventsHandler(CWPearlConversation self, ref bool runOriginalCode);
-
-    public bool IntroSaid;
-    public static event AddEventsHandler? OnAddEvents;
-
-    public override void AddEvents()
-    {
-        if (id is not ID locID)
-            return;
-        var run = true;
-        OnAddEvents?.Invoke(this, ref run);
-        if (!run)
-            return;
-        if (CWOracleHooks.WorldSaveData.TryGetValue(myBehavior.oracle.room.game.GetStorySession.saveState.miscWorldSaveData, out var data))
-            ++data.NumberOfConversations;
-        if (locID == ID.Moon_Pearl_Misc)
-        {
-            CWConversation.CWEventsFromFile(this, locID.value, myBehavior is SSOracleBehavior { inspectPearl: not null }, myBehavior.oracle.room.game.StoryCharacter?.value, true, Random.Range(0, 10000));
-            return;
-        }
-        if (CWConversation.CWEventsFromFile(this, locID.value, myBehavior is SSOracleBehavior { inspectPearl: not null }, myBehavior.oracle.room.game.StoryCharacter?.value))
-            return;
-        base.AddEvents();
-        IntroSaid = false;
-    }
-}
 
 public class CWConversation(SSOracleBehavior owner, SSOracleBehavior.ConversationBehavior convBehav, string convo, DialogBox dialogBox) : SSOracleBehavior.PebblesConversation(owner, convBehav, ID.None, dialogBox)
 {

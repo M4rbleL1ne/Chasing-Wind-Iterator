@@ -6,24 +6,6 @@ using MoreSlugcats;
 using Random = UnityEngine.Random;
 
 namespace CWStuff;
-//CHK
-public class CWNoSubBehavior(SSOracleBehavior owner) : SSOracleBehavior.NoSubBehavior(owner)
-{
-    public float PartialGravity;
-    public bool SeenPlayer, LockPaths, GravOn;
-
-    public override void Update()
-    {
-        if (LockPaths)
-            owner.LockShortcuts();
-        else
-            owner.UnlockShortcuts();
-    }
-
-    public override float LowGravity => GravOn ? PartialGravity : -1f;
-
-    public override bool Gravity => GravOn;
-}
 
 public class CWGeneralConversation(SSOracleBehavior owner, Conversation.ID convoID) : SSOracleBehavior.ConversationBehavior(owner, SubBehavID.MeetWhite, convoID)
 {
@@ -51,7 +33,7 @@ public class CWGeneralConversation(SSOracleBehavior owner, Conversation.ID convo
         get
         {
             var orc = oracle;
-            if (orc.graphicsModule is not OracleGraphics gr)
+            if (orc.graphicsModule is not CWOracleHooks.CWOracleGraphics gr)
                 return orc.firstChunk.pos;
             return gr.hands[1].pos;
         }
@@ -69,7 +51,8 @@ public class CWGeneralConversation(SSOracleBehavior owner, Conversation.ID convo
 
     public override void Update()
     {
-        var ownr = owner;
+        if (owner is not CWOracleHooks.CWOracleBehavior ownr)
+            return;
         if (LockPaths)
         {
             var flag = ownr.pearlConversation is null;
@@ -132,34 +115,29 @@ public class CWGeneralConversation(SSOracleBehavior owner, Conversation.ID convo
                     ownr.action = SSOracleBehavior.Action.GetNeuron_InspectNeuron;
                 }
             }
-            else if (ActiveBotMovement && CWOracleHooks.OYBot.TryGetValue(ownr, out var bot) && bot is not null && !bot.slatedForDeletetion && bot.room == ownr.oracle.room)
+            else if (ActiveBotMovement && ownr.OYBot is PhysicalObject bot && !bot.slatedForDeletetion && bot.room == ownr.oracle.room)
             {
-                if (Custom.DistLess(GrabPos, bot.firstChunk.pos, 20f))
+                var botFc = bot.firstChunk;
+                if (Custom.DistLess(GrabPos, botFc.pos, 20f))
                 {
                     ActiveBotMovement = false;
                     ownr.action = ActionID.GetOYBot_Inspect;
                 }
                 else
-                    bot.firstChunk.vel = Custom.DirVec(bot.firstChunk.pos, GrabPos) * 8f;
+                    botFc.vel = Custom.DirVec(botFc.pos, GrabPos) * 8f;
             }
             if (ownr.action == SSOracleBehavior.Action.GetNeuron_InspectNeuron)
             {
                 if (ownr.greenNeuron is NSHSwarmer sw)
-                {
-                    sw.firstChunk.pos = GrabPos;
-                    CurrentLookPoint = sw.firstChunk.pos;
-                }
+                    CurrentLookPoint = sw.firstChunk.pos = GrabPos;
                 else
                     CurrentLookPoint = null;
                 ownr.movementBehavior = SSOracleBehavior.MovementBehavior.KeepDistance;
             }
             else if (ownr.action == ActionID.GetOYBot_Inspect)
             {
-                if (CWOracleHooks.OYBot.TryGetValue(ownr, out var bot) && bot is not null)
-                {
-                    bot.firstChunk.pos = GrabPos;
-                    CurrentLookPoint = bot.firstChunk.pos;
-                }
+                if (ownr.OYBot is PhysicalObject bot)
+                    CurrentLookPoint = bot.firstChunk.pos = GrabPos;
                 else
                     CurrentLookPoint = null;
                 ownr.movementBehavior = SSOracleBehavior.MovementBehavior.KeepDistance;
@@ -194,20 +172,20 @@ public class CWGeneralConversation(SSOracleBehavior owner, Conversation.ID convo
     {
         var ownr = owner;
         var rm = ownr.oracle.room;
-        var vector = new Vector2(Random.value * rm.PixelWidth, Random.value * rm.PixelHeight);
-        if (ownr.CommunicatePosScore(vector) + 40f < ownr.CommunicatePosScore(ownr.nextPos) && !Custom.DistLess(vector, ownr.nextPos, 30f))
-            ownr.SetNewDestination(vector);
+        var showPos = new Vector2(Random.value * rm.PixelWidth, Random.value * rm.PixelHeight);
+        if (ownr.CommunicatePosScore(showPos) + 40f < ownr.CommunicatePosScore(ownr.nextPos) && !Custom.DistLess(showPos, ownr.nextPos, 30f))
+            ownr.SetNewDestination(showPos);
         ConsistentShowMediaPosCounter += (int)Custom.LerpMap(Vector2.Distance(ShowMediaPos, IdealShowMediaPos), 0f, 200f, 1f, 10f);
-        vector = new(Random.value * rm.PixelWidth, Random.value * rm.PixelHeight);
-        if (ShowMediaScore(vector) + 40f < ShowMediaScore(IdealShowMediaPos))
+        showPos = new(Random.value * rm.PixelWidth, Random.value * rm.PixelHeight);
+        if (ShowMediaScore(showPos) + 40f < ShowMediaScore(IdealShowMediaPos))
         {
-            IdealShowMediaPos = vector;
+            IdealShowMediaPos = showPos;
             ConsistentShowMediaPosCounter = 0;
         }
-        vector = IdealShowMediaPos + Custom.RNV() * Random.value * 40f;
-        if (ShowMediaScore(vector) + 20f < ShowMediaScore(IdealShowMediaPos))
+        showPos = IdealShowMediaPos + Custom.RNV() * Random.value * 40f;
+        if (ShowMediaScore(showPos) + 20f < ShowMediaScore(IdealShowMediaPos))
         {
-            IdealShowMediaPos = vector;
+            IdealShowMediaPos = showPos;
             ConsistentShowMediaPosCounter = 0;
         }
         if (ConsistentShowMediaPosCounter > 300)
@@ -232,19 +210,19 @@ public class CWGeneralConversation(SSOracleBehavior owner, Conversation.ID convo
         var orc = oracle;
         if (orc.room.GetTile(tryPos).Solid || player is not Player p)
             return float.MaxValue;
-        var num = Mathf.Abs(Vector2.Distance(tryPos, p.DangerPos) - 250f);
-        num -= Math.Min(orc.room.aimap.getTerrainProximity(tryPos), 9f) * 30f;
-        num -= Vector2.Distance(tryPos, owner.nextPos) * .5f;
+        var score = Math.Abs(Vector2.Distance(tryPos, p.DangerPos) - 250f);
+        score -= Math.Min(orc.room.aimap.getTerrainProximity(tryPos), 9f) * 30f;
+        score -= Vector2.Distance(tryPos, owner.nextPos) * .5f;
         var joints = orc.arm.joints;
         for (var i = 0; i < joints.Length; i++)
-            num -= Mathf.Min(Vector2.Distance(tryPos, joints[i].pos), 100f) * 10f;
-        if (orc.graphicsModule is OracleGraphics gr)
+            score -= Math.Min(Vector2.Distance(tryPos, joints[i].pos), 100f) * 10f;
+        if (orc.graphicsModule is CWOracleHooks.CWOracleGraphics gr)
         {
             var umbCoord = gr.umbCord.coord;
             var lgt = umbCoord.GetLength(0);
             for (var j = 0; j < lgt; j += 3)
-                num -= Mathf.Min(Vector2.Distance(tryPos, umbCoord[j, 0]), 100f);
+                score -= Math.Min(Vector2.Distance(tryPos, umbCoord[j, 0]), 100f);
         }
-        return num;
+        return score;
     }
 }

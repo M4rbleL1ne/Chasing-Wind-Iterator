@@ -5,7 +5,7 @@ using System;
 using Random = UnityEngine.Random;
 
 namespace CWStuff;
-//CHK
+
 public class CWThrowOut(SSOracleBehavior owner) : SSOracleBehavior.ThrowOutBehavior(owner)
 {
     public override bool Gravity => false;
@@ -109,13 +109,13 @@ public class CWThrowOut(SSOracleBehavior owner) : SSOracleBehavior.ThrowOutBehav
         {
             if (owner.greenNeuron is NSHSwarmer sw && sw.room is null)
                 owner.greenNeuron = null;
-            if (CWOracleHooks.OYBot.TryGetValue(owner, out var bot) && bot is not null && bot.room is null)
-                CWOracleHooks.OYBot.Remove(owner);
+            if (owner is CWOracleHooks.CWOracleBehavior cwbehav && cwbehav.OYBot is PhysicalObject bot && bot.room is null)
+                cwbehav.OYBot = null;
         }
         if ((!p.dead || owner.killFac > .5f) && p.room == oroom)
         {
             movementBehavior = SSOracleBehavior.MovementBehavior.KeepDistance;
-            if (orc.graphicsModule is OracleGraphics gr)
+            if (orc.graphicsModule is CWOracleHooks.CWOracleGraphics gr)
                 gr.eyesOpen = 1f;
             owner.killFac += .025f;
             if (owner.killFac >= 1f)
