@@ -668,7 +668,8 @@ public static class CWOracleHooks
         On.SSOracleBehavior.SlugcatEnterRoomReaction += On_SSOracleBehavior_SlugcatEnterRoomReaction;
         On.SLOracleBehaviorHasMark.MoonConversation.PearlIntro += On_MoonConversation_PearlIntro;
         new Hook(typeof(SLOracleBehaviorHasMark.MoonConversation).GetMethod("get_State", Public | NonPublic | Instance), On_MoonConversation_get_State);
-        On.Menu.StoryGameStatisticsScreen.GetDataFromGame += On_StoryGameStatisticsScreen_GetDataFromGame;
+        //On.Menu.StoryGameStatisticsScreen.GetDataFromGame += On_StoryGameStatisticsScreen_GetDataFromGame;
+        IL.Menu.StoryGameStatisticsScreen.GetDataFromGame += IL_StoryGameStatisticsScreen_GetDataFromGame;
         On.Menu.StoryGameStatisticsScreen.TickerIsDone += On_StoryGameStatisticsScreen_TickerIsDone;
         On.ScavengerAI.PlayerRelationship += On_ScavengerAI_PlayerRelationship;
         On.ScavengerOutpost.ScavengerReportTransgression += On_ScavengerOutpost_ScavengerReportTransgression;
@@ -1105,16 +1106,76 @@ public static class CWOracleHooks
             self.scoreKeeper.AddScoreAdder(ticker.getToValue, 100);
     }
 
-    static void On_StoryGameStatisticsScreen_GetDataFromGame(On.Menu.StoryGameStatisticsScreen.orig_GetDataFromGame orig, StoryGameStatisticsScreen self, KarmaLadderScreen.SleepDeathScreenDataPackage package)
+    static void IL_StoryGameStatisticsScreen_GetDataFromGame(ILContext il)
+    {
+        var c = new ILCursor(il);
+        int vectorVar = 0, numVar = 0;
+        if (c.TryGotoNext(MoveType.After,
+            x => x.MatchLdloca(out vectorVar))
+         && c.TryGotoNext(MoveType.After,
+            x => x.MatchLdcI4(2))
+         && c.TryGotoNext(MoveType.After,
+            x => x.MatchStloc(out numVar)))
+        {
+            var vars = il.Body.Variables;
+            c.Emit(OpCodes.Ldloc, vars[vectorVar])
+             .Emit(OpCodes.Ldloca, vars[numVar])
+             .Emit(OpCodes.Ldarg_0)
+             .Emit(OpCodes.Ldarg_1)
+             .EmitDelegate((Vector2 ogPos, ref int num, StoryGameStatisticsScreen self, KarmaLadderScreen.SleepDeathScreenDataPackage package) =>
+             {
+                 if (!WorldSaveData.TryGetValue(package.saveState.miscWorldSaveData, out var data))
+                     return;
+                 var firstPage = self.pages[0];
+                 if (data.NumberOfConversations > 0)
+                 {
+                     var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, ogPos + new Vector2(0f, -30f * num), "< " + self.Translate("Met Chasing Wind") + ">", NewTickerID.CWEncounter);
+                     self.allTickers.Add(ticker);
+                     firstPage.subObjects.Add(ticker);
+                     ++num;
+                 }
+                 if (ModManager.MSC && package.saveState.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Spear)
+                 {
+                     if (data.SeenSpearmasterTaggedPearl)
+                     {
+                         var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, ogPos + new Vector2(-30f, -30f * num), "< " + self.Translate("Brought Moon's message to Chasing Wind") + ">", NewTickerID.CWSpearMission);
+                         self.allTickers.Add(ticker);
+                         firstPage.subObjects.Add(ticker);
+                         ++num;
+                     }
+                 }
+                 else if (data.SeenGreenNeuron)
+                 {
+                     var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, ogPos + new Vector2(-30f, -30f * num), "< " + self.Translate("Brought the slag keys to Chasing Wind") + ">", NewTickerID.CWGreenNeuron);
+                     self.allTickers.Add(ticker);
+                     firstPage.subObjects.Add(ticker);
+                     ++num;
+                 }
+                 var count = data.OracleState.significantPearls.Count;
+                 if (count > 0)
+                 {
+                     var ticker = new StoryGameStatisticsScreen.LabelTicker(self, firstPage, ogPos + new Vector2(-90f, -30f * num), count, NewTickerID.CWPearls, self.Translate("Unique pearls read by Chasing Wind : "));
+                     ticker.numberLabel.pos.x += 130f;
+                     self.allTickers.Add(ticker);
+                     firstPage.subObjects.Add(ticker);
+                     ++num;
+                 }
+             });
+        }
+        else
+            CWStuffPlugin.s_logger.LogError("Couldn't ILHook StoryGameStatisticsScreen.GetDataFromGame!");
+    }
+
+    /*static void On_StoryGameStatisticsScreen_GetDataFromGame(On.Menu.StoryGameStatisticsScreen.orig_GetDataFromGame orig, StoryGameStatisticsScreen self, KarmaLadderScreen.SleepDeathScreenDataPackage package)
     {
         orig(self, package);
         if (!WorldSaveData.TryGetValue(package.saveState.miscWorldSaveData, out var data))
             return;
-        var vector = new Vector2(self.ContinueAndExitButtonsXPos - 160f, 535f);
+        var ogPos = new Vector2(self.ContinueAndExitButtonsXPos - 160f, 535f);
         var firstPage = self.pages[0];
         if (data.NumberOfConversations > 0)
         {
-            var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, vector + new Vector2(0f, -30f * (-3 + self.allTickers.Count)), "< " + self.Translate("Met Chasing Wind") + ">", NewTickerID.CWEncounter);
+            var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, ogPos + new Vector2(0f, -30f * (-3 + self.allTickers.Count)), "< " + self.Translate("Met Chasing Wind") + ">", NewTickerID.CWEncounter);
             self.allTickers.Add(ticker);
             firstPage.subObjects.Add(ticker);
         }
@@ -1122,26 +1183,26 @@ public static class CWOracleHooks
         {
             if (data.SeenSpearmasterTaggedPearl)
             {
-                var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, vector + new Vector2(-30f, -30f * (-3 + self.allTickers.Count)), "< " + self.Translate("Brought Moon's message to Chasing Wind") + ">", NewTickerID.CWSpearMission);
+                var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, ogPos + new Vector2(-30f, -30f * (-3 + self.allTickers.Count)), "< " + self.Translate("Brought Moon's message to Chasing Wind") + ">", NewTickerID.CWSpearMission);
                 self.allTickers.Add(ticker);
                 firstPage.subObjects.Add(ticker);
             }
         }
         else if (data.SeenGreenNeuron)
         {
-            var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, vector + new Vector2(-30f, -30f * (-3 + self.allTickers.Count)), "< " + self.Translate("Brought the slag keys to Chasing Wind") + ">", NewTickerID.CWGreenNeuron);
+            var ticker = new StoryGameStatisticsScreen.Popper(self, firstPage, ogPos + new Vector2(-30f, -30f * (-3 + self.allTickers.Count)), "< " + self.Translate("Brought the slag keys to Chasing Wind") + ">", NewTickerID.CWGreenNeuron);
             self.allTickers.Add(ticker);
             firstPage.subObjects.Add(ticker);
         }
         var count = data.OracleState.significantPearls.Count;
         if (count > 0)
         {
-            var ticker = new StoryGameStatisticsScreen.LabelTicker(self, firstPage, vector + new Vector2(-90f, -30f * (-3 + self.allTickers.Count)), count, NewTickerID.CWPearls, self.Translate("Unique pearls read by Chasing Wind : "));
+            var ticker = new StoryGameStatisticsScreen.LabelTicker(self, firstPage, ogPos + new Vector2(-90f, -30f * (-3 + self.allTickers.Count)), count, NewTickerID.CWPearls, self.Translate("Unique pearls read by Chasing Wind : "));
             ticker.numberLabel.pos.x += 130f;
             self.allTickers.Add(ticker);
             firstPage.subObjects.Add(ticker);
         }
-    }
+    }*/
 
     static SLOrcacleState On_MoonConversation_get_State(Func<SLOracleBehaviorHasMark.MoonConversation, SLOrcacleState> orig, SLOracleBehaviorHasMark.MoonConversation self)
     {
