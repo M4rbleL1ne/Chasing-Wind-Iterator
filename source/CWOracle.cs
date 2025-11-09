@@ -1,22 +1,22 @@
-﻿using Mono.Cecil.Cil;
+﻿using HUD;
+using JollyCoop;
+using Menu;
+using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
+using MoreSlugcats;
 using RWCustom;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using static System.Reflection.BindingFlags;
 using Random = UnityEngine.Random;
-using MoreSlugcats;
-using System.Reflection;
-using Menu;
-using HUD;
-using JollyCoop;
 
 namespace CWStuff;
 
@@ -54,6 +54,8 @@ public static class CWOracleHooks
     public class CWOracleBehavior : SSOracleBehavior
     {
         public PhysicalObject? OYBot;
+
+        public virtual Player? PlayerWithNeuronInStomach => PlayersInRoom?.Find(x => x.objectInStomach?.type == AbstractPhysicalObject.AbstractObjectType.NSHSwarmer);
 
         public virtual Player? PlayerWithBotInStomach => PlayersInRoom?.Find(x => x.objectInStomach?.type?.value == "OYOrbitalRobot");
 
@@ -260,22 +262,37 @@ public static class CWOracleHooks
                         else
                             pl.Stun(20);
                     }
-                    var vector2 = Vector2.ClampMagnitude(rm.MiddleOfTile(24, 14) - pl.mainBodyChunk.pos, 40f) / 40f * 2.8f * Mathf.InverseLerp(30f, 160f, inActionCounter);
                     if (ModManager.CoopAvailable)
                     {
                         players = PlayersInRoom;
                         for (i = 0; i < players.Count; i++)
-                            players[i].mainBodyChunk.vel += vector2;
+                        {
+                            var play = players[i];
+                            play.mainBodyChunk.vel += Vector2.ClampMagnitude(rm.MiddleOfTile(24, 14) - play.mainBodyChunk.pos, 40f) / 40f * 2.8f * Mathf.InverseLerp(30f, 160f, inActionCounter);
+                        }
                     }
                     else
-                        pl.mainBodyChunk.vel += vector2;
+                        pl.mainBodyChunk.vel += Vector2.ClampMagnitude(rm.MiddleOfTile(24, 14) - pl.mainBodyChunk.pos, 40f) / 40f * 2.8f * Mathf.InverseLerp(30f, 160f, inActionCounter);
                 }
                 if (inActionCounter == 30)
                     rm.PlaySound(SoundID.SS_AI_Give_The_Mark_Telekenisis, 0f, 1f, 1f);
                 if (inActionCounter == 300)
                 {
-                    pl.mainBodyChunk.vel += Custom.RNV() * 10f;
-                    pl.bodyChunks[1].vel += Custom.RNV() * 10f;
+                    if (ModManager.CoopAvailable)
+                    {
+                        players = PlayersInRoom;
+                        for (i = 0; i < players.Count; i++)
+                        {
+                            var play = players[i];
+                            play.mainBodyChunk.vel += Custom.RNV() * 10f;
+                            play.bodyChunks[1].vel += Custom.RNV() * 10f;
+                        }
+                    }
+                    else
+                    {
+                        pl.mainBodyChunk.vel += Custom.RNV() * 10f;
+                        pl.bodyChunks[1].vel += Custom.RNV() * 10f;
+                    }
                     if ((cv.Gifts & GiftStates.FoodMax) == GiftStates.FoodMax)
                         pl.AddFood(pl.MaxFoodInStomach);
                     if (ModManager.CoopAvailable)
@@ -332,8 +349,21 @@ public static class CWOracleHooks
                     }
                     rm.PlaySound(SoundID.SS_AI_Give_The_Mark_Boom, 0f, 1f, 1f);
                 }
-                if (inActionCounter > 300 && player?.graphicsModule is PlayerGraphics pgr && (cv.Gifts & GiftStates.Mark) == GiftStates.Mark)
-                    pgr.markAlpha = Mathf.Max(pgr.markAlpha, Mathf.InverseLerp(500f, 300f, inActionCounter));
+                if ((cv.Gifts & GiftStates.Mark) == GiftStates.Mark)
+                {
+                    if (ModManager.CoopAvailable)
+                    {
+                        players = PlayersInRoom;
+                        for (i = 0; i < players.Count; i++)
+                        {
+                            var play = players[i];
+                            if (inActionCounter > 300 && play.graphicsModule is PlayerGraphics pgr)
+                                pgr.markAlpha = Mathf.Max(pgr.markAlpha, Mathf.InverseLerp(500f, 300f, inActionCounter));
+                        }
+                    }
+                    else if (inActionCounter > 300 && player?.graphicsModule is PlayerGraphics pgr)
+                        pgr.markAlpha = Mathf.Max(pgr.markAlpha, Mathf.InverseLerp(500f, 300f, inActionCounter));
+                }
                 if (inActionCounter >= 500 && conversation is Conversation co)
                     co.paused = false;
             }
@@ -1516,7 +1546,7 @@ public static class CWOracleHooks
             var flag = false;
             if (WorldSaveData.TryGetValue(rm.game.GetStorySession.saveState.miscWorldSaveData, out var data))
             {
-                if (!data.SeenGreenNeuron && self.PlayerWithNeuronInStomach is Player pl0)
+                if (!data.SeenGreenNeuron && cwbehav.PlayerWithNeuronInStomach is Player pl0)
                 {
                     flag = true;
                     self.player = pl0;
@@ -2107,7 +2137,7 @@ public static class CWOracleHooks
                     try
                     {
                         var worldCoordinate = rm.LocalCoordinateOfNode(1);
-                        JollyCustom.MovePlayerWithItems(item, item.room, rm.abstractRoom.name, worldCoordinate);
+                        JollyCustom.MovePlayerWithItems(item, rm.abstractRoom.name, worldCoordinate);
                         var down = Vector2.down;
                         var chs = item.bodyChunks;
                         var md = rm.MiddleOfTile(worldCoordinate);

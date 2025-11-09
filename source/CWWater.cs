@@ -278,16 +278,19 @@ static class CWWater
     static void IL_Water_DrawSprites(ILContext il)
     {
         var c = new ILCursor(il);
-        for (var i = 1; i <= 7; i++)
+        for (var i = 1; i <= 8; i++)
         {
-            if (c.TryGotoNext(MoveType.After,
-                x => x.MatchCall<ModManager>("get_DLCShared")))
+            if (i != 7)
             {
-                c.Emit(OpCodes.Ldarg_0)
-                 .EmitDelegate((bool flag, Water self) => flag || self.room?.world?.name == CWStuffPlugin.CW);
+                if (c.TryGotoNext(MoveType.After,
+                    x => x.MatchCall<ModManager>("get_DLCShared")))
+                {
+                    c.Emit(OpCodes.Ldarg_0)
+                     .EmitDelegate((bool flag, Water self) => flag || self.room?.world?.name == CWStuffPlugin.CW);
+                }
+                else
+                    CWStuffPlugin.s_logger.LogError($"Couldn't ILHook Water.DrawSprites! (part {i})");
             }
-            else
-                CWStuffPlugin.s_logger.LogError($"Couldn't ILHook Water.DrawSprites! (part {i})");
         }
     }
 
