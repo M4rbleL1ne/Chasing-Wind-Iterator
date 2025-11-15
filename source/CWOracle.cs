@@ -1541,7 +1541,7 @@ public static class CWOracleHooks
     {
         if (self is CWOracleBehavior cwbehav)
         {
-            if (!ModManager.CoopAvailable || self.oracle.room is not Room rm || rm.game.rainWorld.safariMode)
+            if (self.oracle.room is not Room rm || rm.game.rainWorld.safariMode)
                 return;
             var flag = false;
             if (WorldSaveData.TryGetValue(rm.game.GetStorySession.saveState.miscWorldSaveData, out var data))
