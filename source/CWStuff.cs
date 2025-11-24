@@ -28,7 +28,7 @@ using Random = UnityEngine.Random;
 
 namespace CWStuff;
 
-[BepInPlugin("lb-fgf-m4r-ik.chatoyant-waterfalls-but-real", "CWStuff", "10.0.1")]
+[BepInPlugin("lb-fgf-m4r-ik.chatoyant-waterfalls-but-real", "CWStuff", "10.0.2")]
 public sealed class CWStuffPlugin : BaseUnityPlugin
 {
     public static RoomSettings.RoomEffect.Type CWDarkerTubes = new(nameof(CWDarkerTubes), true);

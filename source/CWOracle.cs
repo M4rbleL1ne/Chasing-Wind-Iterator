@@ -718,6 +718,29 @@ public static class CWOracleHooks
         IL.HUD.TextPrompt.Update += IL_TextPrompt_Update;
         On.SSOracleBehavior.UpdateStoryPearlCollection += On_SSOracleBehavior_UpdateStoryPearlCollection;
         On.Player.ThrowObject += On_Player_ThrowObject;
+        IL.RegionState.AdaptWorldToRegionState += IL_RegionState_AdaptWorldToRegionState;
+    }
+
+    static void IL_RegionState_AdaptWorldToRegionState(ILContext il)
+    {
+        var c = new ILCursor(il);
+        var loc1 = 0;
+        ILLabel? label = null;
+        if (c.TryGotoNext(MoveType.After,
+            x => x.MatchLdloc(out loc1),
+            x => x.MatchLdfld<AbstractRoom>("name"),
+            x => x.MatchLdstr("SS_AI"),
+            x => x.MatchCall<string>("op_Equality"),
+            x => x.MatchBrtrue(out label)))
+        {
+            c.Emit(OpCodes.Ldloc, loc1)
+             .Emit<AbstractRoom>(OpCodes.Ldfld, "name")
+             .Emit(OpCodes.Ldstr, "CW_AI")
+             .Emit<string>(OpCodes.Call, "op_Equality")
+             .Emit(OpCodes.Brtrue, label);
+        }
+        else
+            CWStuffPlugin.s_logger.LogError("Couldn't ILHook RegionState.AdaptWorldToRegionState!");
     }
 
     static void On_Player_ThrowObject(On.Player.orig_ThrowObject orig, Player self, int grasp, bool eu)
