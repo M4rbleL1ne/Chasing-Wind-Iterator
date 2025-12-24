@@ -28,7 +28,7 @@ using Random = UnityEngine.Random;
 
 namespace CWStuff;
 
-[BepInPlugin("lb-fgf-m4r-ik.chatoyant-waterfalls-but-real", "CWStuff", "10.0.2")]
+[BepInPlugin("lb-fgf-m4r-ik.chatoyant-waterfalls-but-real", "CWStuff", "10.0.3")]
 public sealed class CWStuffPlugin : BaseUnityPlugin
 {
     public static RoomSettings.RoomEffect.Type CWDarkerTubes = new(nameof(CWDarkerTubes), true);
@@ -76,8 +76,14 @@ public sealed class CWStuffPlugin : BaseUnityPlugin
         On.BubbleGrass.AbstractBubbleGrass.ToString += On_AbstractBubbleGrass_ToString;
         On.AbstractConsumable.ToString += On_AbstractConsumable_ToString;
         IL.Room.Loaded += IL_Room_Loaded;
+        On.AbstractPhysicalObject.IsObjectImportant += On_AbstractPhysicalObject_IsObjectImportant;
         CWOracleHooks.Apply();
         CWWater.Apply();
+    }
+
+    static bool On_AbstractPhysicalObject_IsObjectImportant(On.AbstractPhysicalObject.orig_IsObjectImportant orig, AbstractPhysicalObject testObj, World world)
+    {
+        return (testObj?.type is AbstractPhysicalObject.AbstractObjectType tp && (tp == AbstractPhysicalObjectType.CWOracleSwarmer || tp == AbstractPhysicalObjectType.CWPearl)) || orig(testObj, world);
     }
 
     static void IL_Room_Loaded(ILContext il)
