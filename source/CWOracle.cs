@@ -2150,7 +2150,7 @@ public static class CWOracleHooks
             {
                 Player? player = null;
                 foreach (Player item in from x in rm.game.NonPermaDeadPlayers
-                                        where x.Room != rm.abstractRoom
+                                        where x.Room != rm.abstractRoom && x.realizedCreature is not null
                                         select x.realizedCreature as Player into x
                                         orderby x.slugOnBack is not null
                                         select x)
@@ -2159,6 +2159,12 @@ public static class CWOracleHooks
                     //JollyCoop.JollyCustom.Log($"Warping player to CW room, {item} - back occupied?{item.slugOnBack}");
                     try
                     {
+                        if (item.inShortcut || item.room is null)
+                        {
+                            //JollyCustom.Log($"Player is currently in a pipe, waiting for them to start iterator sequence ...{item}");
+                            self.timeSinceSeenPlayer = 0;
+                            continue;
+                        }
                         var worldCoordinate = rm.LocalCoordinateOfNode(1);
                         JollyCustom.MovePlayerWithItems(item, rm.abstractRoom.name, worldCoordinate);
                         var down = Vector2.down;
@@ -2175,10 +2181,12 @@ public static class CWOracleHooks
                     {
                         JollyCustom.Log("Failed to move player " + ex, true);
                     }
+                    if (item.abstractPhysicalObject.Room.name != rm.abstractRoom.name)
+                        continue;
                     if (player is null && item.objectInStomach is AbstractPhysicalObject obj && (obj.type == AbstractPhysicalObject.AbstractObjectType.NSHSwarmer || obj.type?.value == "OYOrbitalRobot"))
                     {
                         player = item;
-                        //JollyCoop.JollyCustom.Log($"Found player with neuron in stomach, focusing ... {item}");
+                        //JollyCoop.JollyCustom.Log($"Found player with OYBot in stomach, focusing ... {item}");
                     }
                 }
                 if (player is not null)
