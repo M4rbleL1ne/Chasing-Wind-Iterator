@@ -848,7 +848,7 @@ public static class CWOracleHooks
                  }
                  else if (string.Equals("CW_AI", nm, StringComparison.OrdinalIgnoreCase))
                  {
-                     if (saveState.redExtraCycles)
+                     if (saveState.RedExtraCycles)
                          cycles += AdditionalCycles;
                  }
                  return cycles;
